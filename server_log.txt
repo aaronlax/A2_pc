@@ -16732,3 +16732,9 @@ websockets.exceptions.InvalidMessage: did not receive a valid HTTP request
 2025-03-21 08:48:18,478 - __main__ - INFO - New connection from 127.0.0.1 on path: /browser
 2025-03-21 08:48:18,479 - __main__ - INFO - Browser client connected: 127.0.0.1, ID: browser_1742561298
 2025-03-21 08:48:18,479 - message_handler - INFO - Received hello from browser client
+2025-03-21 08:53:11,627 - websockets.server - INFO - server closing
+2025-03-21 08:53:11,628 - __main__ - INFO - Browser client removed: 127.0.0.1
+2025-03-21 08:53:11,629 - __main__ - INFO - Browser client removed: 127.0.0.1
+2025-03-21 08:53:11,663 - __main__ - INFO - Pi client removed
+2025-03-21 08:53:11,663 - websockets.server - INFO - server closed
+2025-03-21 08:53:11,664 - __main__ - INFO - Server terminated by user
