@@ -97,55 +97,124 @@ async def handle_pi_message(websocket, message, browser_clients, wsl_processor, 
     try:
         # Check if message is binary data (for frames)
         if isinstance(message, bytes):
-            # Extract frame_id and timestamp from binary header
-            header = message[:8]
-            frame_data = message[8:]
-            
-            frame_id = int.from_bytes(header[:4], byteorder='little')
-            timestamp = struct.unpack('<f', header[4:8])[0]
-            
-            logger.debug(f"Received binary frame {frame_id}, size: {len(message)} bytes")
-            
-            # Convert binary to base64 for browser clients that expect it
-            frame_base64 = base64.b64encode(frame_data).decode('utf-8')
-            
-            # Should we process this frame?
-            should_process = wsl_processor is not None
-            
-            if should_process:
-                # Add to processing queue
-                try:
-                    # Don't block if queue is full
-                    await asyncio.wait_for(
-                        frame_queue.put({
+            # Parse the binary frame format
+            try:
+                # Read header (14 bytes base)
+                header_format = '<If??'
+                header_size = struct.calcsize(header_format)
+                
+                if len(message) < header_size:
+                    logger.error(f"Binary message too short: {len(message)} bytes")
+                    return
+                
+                # Extract base header
+                frame_id, timestamp, has_color, has_depth = struct.unpack(header_format, message[:header_size])
+                
+                logger.debug(f"Received binary frame {frame_id} - color: {has_color}, depth: {has_depth}")
+                
+                # Initialize variables
+                color_data = None
+                depth_data = None
+                depth_scale = 0.001  # Default value
+                
+                # Current position in message
+                pos = header_size
+                
+                # Extract color frame if present
+                if has_color:
+                    # Read color data length (4 bytes)
+                    if pos + 4 > len(message):
+                        logger.error("Binary message truncated at color length")
+                        return
+                    
+                    color_length = struct.unpack('<I', message[pos:pos+4])[0]
+                    pos += 4
+                    
+                    # Read color data
+                    if pos + color_length > len(message):
+                        logger.error("Binary message truncated at color data")
+                        return
+                    
+                    color_bytes = message[pos:pos+color_length]
+                    color_data = base64.b64encode(color_bytes).decode('utf-8')
+                    pos += color_length
+                
+                # Extract depth frame if present
+                if has_depth:
+                    # Read depth data length (4 bytes)
+                    if pos + 4 > len(message):
+                        logger.error("Binary message truncated at depth length")
+                        return
+                    
+                    depth_length = struct.unpack('<I', message[pos:pos+4])[0]
+                    pos += 4
+                    
+                    # Read depth data
+                    if pos + depth_length > len(message):
+                        logger.error("Binary message truncated at depth data")
+                        return
+                    
+                    depth_bytes = message[pos:pos+depth_length]
+                    depth_data = base64.b64encode(depth_bytes).decode('utf-8')
+                    pos += depth_length
+                    
+                    # Read depth scale (4 bytes)
+                    if pos + 4 > len(message):
+                        logger.error("Binary message truncated at depth scale")
+                        return
+                    
+                    depth_scale = struct.unpack('<f', message[pos:pos+4])[0]
+                
+                # Should we process this frame?
+                should_process = wsl_processor is not None
+                
+                if should_process:
+                    # Add to processing queue
+                    try:
+                        # Don't block if queue is full
+                        await asyncio.wait_for(
+                            frame_queue.put({
+                                "frame_id": frame_id,
+                                "timestamp": timestamp,
+                                "image": color_data
+                            }),
+                            timeout=0.1
+                        )
+                        
+                        # Forward to WSL processor
+                        await utils.safe_send(wsl_processor, {
+                            "type": "frame_to_process",
                             "frame_id": frame_id,
                             "timestamp": timestamp,
-                            "image": frame_base64
-                        }),
-                        timeout=0.1
-                    )
-                    
-                    # Forward to WSL processor
-                    await utils.safe_send(wsl_processor, {
-                        "type": "frame_to_process",
-                        "frame_id": frame_id,
-                        "timestamp": timestamp,
-                        "image": frame_base64
-                    })
-                except asyncio.TimeoutError:
-                    logger.warning("Processing queue full, skipping frame")
+                            "image": color_data,
+                            "depth_data": depth_data,
+                            "depth_scale": depth_scale
+                        })
+                    except asyncio.TimeoutError:
+                        logger.warning("Processing queue full, skipping frame")
+                
+                # Create message for browser clients
+                frame_message = {
+                    "type": "frame",
+                    "frame_id": frame_id,
+                    "timestamp": timestamp,
+                    "image": color_data,
+                    "processed": False,
+                    "binary_received": True
+                }
+                
+                # Add depth data if available
+                if has_depth:
+                    frame_message["depth_data"] = depth_data
+                    frame_message["depth_scale"] = depth_scale
+                
+                # Forward to browser clients efficiently
+                await utils.distribute_to_browsers(browser_clients, frame_message)
             
-            # Forward to browser clients
-            frame_message = {
-                "type": "frame",
-                "frame_id": frame_id,
-                "timestamp": timestamp,
-                "image": frame_base64,
-                "processed": False
-            }
+            except Exception as e:
+                logger.error(f"Error parsing binary message: {e}")
+                logger.error(traceback.format_exc())
             
-            # Use distribute_to_browsers for more efficient parallel sending
-            await utils.distribute_to_browsers(browser_clients, frame_message)
             return
         
         # Handle JSON messages

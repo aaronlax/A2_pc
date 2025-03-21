@@ -5,3 +5,5 @@ opencv-python
 torch
 torchvision
 ultralytics
+python-dotenv
+openai

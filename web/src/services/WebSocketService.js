@@ -176,31 +176,85 @@ class WebSocketService {
   
   // Handle binary frame data - much more efficient than base64
   handleBinaryFrame(buffer) {
-    // First 8 bytes: frame_id (uint32) + timestamp (float32)
-    const headerView = new DataView(buffer, 0, 8);
-    const frameId = headerView.getUint32(0, true);
-    const timestamp = headerView.getFloat32(4, true);
-    
-    // The rest is the JPEG image data
-    const imageData = buffer.slice(8);
-    
-    // Convert to base64 for backward compatibility
-    const base64Image = this.arrayBufferToBase64(imageData);
-    
-    // Update stats
-    this.framesReceived++;
-    this.lastFrameReceived = Date.now();
-    
-    // Create frame object compatible with existing code
-    const frameData = {
-      type: 'frame',
-      frame_id: frameId,
-      timestamp: timestamp,
-      image: base64Image,
-      binary_transfer: true
-    };
-    
-    this.trigger('frame', frameData);
+    try {
+      // Parse the binary header
+      const headerView = new DataView(buffer, 0, 10);  // 10 bytes for basic header
+      const frameId = headerView.getUint32(0, true);   // 4 bytes: frame ID
+      const timestamp = headerView.getFloat32(4, true); // 4 bytes: timestamp
+      const hasColor = Boolean(headerView.getUint8(8)); // 1 byte: has color flag
+      const hasDepth = Boolean(headerView.getUint8(9)); // 1 byte: has depth flag
+      
+      // Track current position in buffer
+      let position = 10;
+      
+      // Variables to hold frame data
+      let colorData = null;
+      let depthData = null;
+      let depthScale = 0.001; // Default value
+      
+      // Extract color data if present
+      if (hasColor) {
+        // Read color data length (4 bytes)
+        const colorLengthView = new DataView(buffer, position, 4);
+        const colorLength = colorLengthView.getUint32(0, true);
+        position += 4;
+        
+        // Extract color data
+        const colorBuffer = buffer.slice(position, position + colorLength);
+        colorData = this.arrayBufferToBase64(colorBuffer);
+        position += colorLength;
+      }
+      
+      // Extract depth data if present
+      if (hasDepth) {
+        // Read depth data length (4 bytes)
+        const depthLengthView = new DataView(buffer, position, 4);
+        const depthLength = depthLengthView.getUint32(0, true);
+        position += 4;
+        
+        // Extract depth data
+        const depthBuffer = buffer.slice(position, position + depthLength);
+        depthData = this.arrayBufferToBase64(depthBuffer);
+        position += depthLength;
+        
+        // Read depth scale (4 bytes)
+        const depthScaleView = new DataView(buffer, position, 4);
+        depthScale = depthScaleView.getFloat32(0, true);
+      }
+      
+      // Update stats
+      this.framesReceived++;
+      this.lastFrameReceived = Date.now();
+      
+      // Create frame object compatible with existing code
+      const frameData = {
+        type: 'frame',
+        frame_id: frameId,
+        timestamp: timestamp,
+        binary_transfer: true
+      };
+      
+      // Add color image if available
+      if (hasColor) {
+        frameData.image = colorData;
+      }
+      
+      // Add depth data if available
+      if (hasDepth) {
+        frameData.depth_data = depthData;
+        frameData.depth_scale = depthScale;
+      }
+      
+      // Trigger frame event
+      this.trigger('frame', frameData);
+      
+      // Also trigger depth event if depth data is present
+      if (hasDepth) {
+        this.trigger('depth_data', frameData);
+      }
+    } catch (error) {
+      console.error('Error parsing binary frame:', error);
+    }
   }
   
   // Convert ArrayBuffer to Base64

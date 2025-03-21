@@ -11882,3 +11882,52 @@ websockets.exceptions.InvalidMessage: did not receive a valid HTTP request
 2025-03-20 22:38:23,670 - websockets.server - INFO - server closing
 2025-03-20 22:38:23,671 - websockets.server - INFO - server closed
 2025-03-20 22:38:23,672 - __main__ - INFO - Server terminated by user
+2025-03-21 09:12:53,030 - __main__ - INFO - A2 Server v1.0.0
+2025-03-21 09:12:53,031 - __main__ - INFO - Server will listen on 0.0.0.0:5000
+2025-03-21 09:12:53,031 - __main__ - INFO - Starting server on 0.0.0.0:5000
+2025-03-21 09:12:53,057 - websockets.server - INFO - server listening on 0.0.0.0:5000
+2025-03-21 09:12:53,057 - __main__ - INFO - Server started successfully
+2025-03-21 09:13:17,490 - websockets.server - INFO - connection open
+2025-03-21 09:13:17,490 - __main__ - INFO - New connection from 127.0.0.1 on path: /browser
+2025-03-21 09:13:17,490 - __main__ - INFO - Browser client connected: 127.0.0.1, ID: browser_1742562797
+2025-03-21 09:13:17,492 - message_handler - INFO - Received hello from browser client
+2025-03-21 09:13:17,904 - websockets.server - ERROR - opening handshake failed
+Traceback (most recent call last):
+  File "C:\Users\Kristina\Projects\A2_pc\venv\Lib\site-packages\websockets\http11.py", line 138, in parse
+    request_line = yield from parse_line(read_line)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Kristina\Projects\A2_pc\venv\Lib\site-packages\websockets\http11.py", line 309, in parse_line
+    line = yield from read_line(MAX_LINE_LENGTH)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Kristina\Projects\A2_pc\venv\Lib\site-packages\websockets\streams.py", line 46, in read_line
+    raise EOFError(f"stream ends after {p} bytes, before end of line")
+EOFError: stream ends after 0 bytes, before end of line
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Kristina\Projects\A2_pc\venv\Lib\site-packages\websockets\server.py", line 545, in parse
+    request = yield from Request.parse(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Kristina\Projects\A2_pc\venv\Lib\site-packages\websockets\http11.py", line 140, in parse
+    raise EOFError("connection closed while reading HTTP request line") from exc
+EOFError: connection closed while reading HTTP request line
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Kristina\Projects\A2_pc\venv\Lib\site-packages\websockets\asyncio\server.py", line 356, in conn_handler
+    await connection.handshake(
+  File "C:\Users\Kristina\Projects\A2_pc\venv\Lib\site-packages\websockets\asyncio\server.py", line 207, in handshake
+    raise self.protocol.handshake_exc
+websockets.exceptions.InvalidMessage: did not receive a valid HTTP request
+2025-03-21 09:13:17,926 - websockets.server - INFO - connection open
+2025-03-21 09:13:17,927 - __main__ - INFO - New connection from 192.168.50.221 on path: /pi
+2025-03-21 09:13:17,927 - __main__ - INFO - Pi client connected: ('192.168.50.221', 32906)
+2025-03-21 09:13:17,930 - message_handler - INFO - Received hello from Pi: virgil, binary support: False
+2025-03-21 09:14:03,334 - message_handler - WARNING - Unknown browser message type: camera_control
+2025-03-21 09:14:08,767 - message_handler - WARNING - Unknown browser message type: camera_control
+2025-03-21 09:14:30,200 - message_handler - WARNING - Unknown browser message type: camera_control
+2025-03-21 09:14:30,296 - message_handler - WARNING - Unknown browser message type: camera_control
+2025-03-21 09:14:32,516 - message_handler - WARNING - Unknown browser message type: camera_control
+2025-03-21 09:14:32,593 - message_handler - WARNING - Unknown browser message type: camera_control
