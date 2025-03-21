@@ -38,8 +38,9 @@ wsl_processor = None
 
 # Track connections to prevent flooding
 last_connection_time = {}
-connection_limit_window = 10  # seconds - increased from 5 to 10
-max_connections_per_window = 10  # increased from 5 to 10
+connection_limit_window = 60  # seconds - increased to a full minute
+max_connections_per_window = 30  # increased to allow more reconnections
+whitelisted_ips = {"127.0.0.1", "localhost"}
 
 # Servo state
 servo_state = {
@@ -82,7 +83,7 @@ async def handle_browser_client(websocket):
     
     # Check for connection flooding
     current_time = time.time()
-    if client_ip != "unknown":
+    if client_ip != "unknown" and client_ip not in whitelisted_ips:
         if client_ip not in last_connection_time:
             last_connection_time[client_ip] = []
         

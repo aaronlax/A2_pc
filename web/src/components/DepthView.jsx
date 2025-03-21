@@ -26,6 +26,14 @@ const DepthView = ({ depthData, onModeChange }) => {
   useEffect(() => {
     if (!depthData || !depthData.depth_data || !canvasRef.current) return;
     
+    // Add debugging logs
+    console.log('Received depth data:', {
+      hasDepthData: !!depthData.depth_data,
+      width: depthData.width,
+      height: depthData.height,
+      scale: depthData.depth_scale
+    });
+    
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     

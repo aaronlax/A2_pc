@@ -4,9 +4,10 @@ class WebSocketService {
   callbacks = {};
   socket = null;
   connectionAttempts = 0;
-  maxAttempts = 10;
+  maxAttempts = 5;
   reconnectTimeout = null;
-  initialReconnectDelay = 1000;
+  initialReconnectDelay = 10000;
+  isConnecting = false;
   
   // Add status tracking
   connectionStatus = 'disconnected';
@@ -21,6 +22,11 @@ class WebSocketService {
   }
   
   connect(url) {
+    if (this.isConnecting) {
+      console.log('Connection attempt already in progress, ignoring');
+      return;
+    }
+    
     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
       console.log('WebSocket already connected');
       return;
@@ -31,6 +37,7 @@ class WebSocketService {
       this.reconnectTimeout = null;
     }
     
+    this.isConnecting = true;
     console.log(`Connecting to WebSocket: ${url}`);
     this.connectionStatus = 'connecting';
     this.trigger('status_change', { status: 'connecting' });
@@ -45,6 +52,7 @@ class WebSocketService {
         console.log('WebSocket connected');
         this.connectionStatus = 'connected';
         this.connectionAttempts = 0;
+        this.isConnecting = false;
         
         this.send({
           type: 'hello',
@@ -67,6 +75,7 @@ class WebSocketService {
       this.socket.onclose = (event) => {
         console.log('WebSocket disconnected', event.code, event.reason);
         this.connectionStatus = 'disconnected';
+        this.isConnecting = false;
         this.trigger('disconnect');
         this.trigger('status_change', { status: 'disconnected', code: event.code, reason: event.reason });
         
@@ -76,20 +85,29 @@ class WebSocketService {
           this.pingInterval = null;
         }
         
+        // If we got a rate limit exceeded message, wait much longer
+        if (event.code === 1008 && event.reason === "Rate limit exceeded") {
+          console.log("Rate limit exceeded, waiting 30 seconds before reconnecting");
+          const delay = 30000; // Wait 30 seconds before trying again
+          this.reconnectTimeout = setTimeout(() => this.connect(url), delay);
+          return;
+        }
+        
         if (this.connectionAttempts < this.maxAttempts) {
           this.connectionAttempts++;
-          const delay = Math.min(30000, this.initialReconnectDelay * Math.pow(1.5, this.connectionAttempts - 1));
+          const delay = Math.min(120000, this.initialReconnectDelay * Math.pow(2, this.connectionAttempts - 1));
           console.log(`Reconnecting in ${delay}ms (attempt ${this.connectionAttempts} of ${this.maxAttempts})`);
           
           this.reconnectTimeout = setTimeout(() => this.connect(url), delay);
         } else {
-          console.error('Maximum reconnection attempts reached');
+          console.error('Maximum reconnection attempts reached. Please refresh the page to try again.');
           this.trigger('status_change', { status: 'failed' });
         }
       };
       
       this.socket.onerror = (error) => {
         console.error('WebSocket error:', error);
+        this.isConnecting = false;
         this.trigger('error', error);
         this.trigger('status_change', { status: 'error', error });
       };
@@ -114,6 +132,13 @@ class WebSocketService {
               
               // Check if this frame contains RealSense depth data
               if (data.depth_data || data.point_cloud) {
+                console.log('WebSocketService received depth data:', {
+                  frameId: data.frame_id,
+                  hasDepthData: !!data.depth_data,
+                  dataLength: data.depth_data ? data.depth_data.length : 0,
+                  timestamp: new Date().toISOString()
+                });
+                
                 // Trigger both standard frame and depth data events
                 this.trigger('frame', data);
                 this.trigger('depth_data', data);
@@ -254,8 +279,14 @@ class WebSocketService {
   }
   
   connectToServer() {
-    // Get hostname and port from configuration or environment
-    const host = window.location.hostname;
+    // Prevent multiple calls to connectToServer from creating multiple connections
+    if (this.isConnecting || (this.socket && this.socket.readyState === WebSocket.OPEN)) {
+      console.log('Already connected or connecting');
+      return;
+    }
+    
+    // Fixed hostname to localhost for development to avoid any hostname issues
+    const host = 'localhost';
     const port = 5000;  // Match the server port
     
     this.connect(`ws://${host}:${port}/browser`);

@@ -32,6 +32,29 @@ async def safe_send(websocket, data):
         logger.error(f"Error sending message: {e}")
         return False
 
+async def distribute_to_browsers(browser_clients, message):
+    """Send a message to all browser clients efficiently"""
+    if not browser_clients:
+        return
+    
+    json_message = json.dumps(message) if isinstance(message, dict) else message
+    
+    # Create tasks for each client
+    tasks = []
+    for client in browser_clients:
+        try:
+            # Use a safe method to check if the connection is still open
+            # Instead of checking 'closed' property which doesn't exist
+            tasks.append(asyncio.create_task(
+                client.send(json_message)
+            ))
+        except Exception as e:
+            logger.error(f"Error adding client to tasks: {e}")
+    
+    # Execute all sends in parallel if there are any
+    if tasks:
+        await asyncio.gather(*tasks, return_exceptions=True)
+
 def encode_image(image, quality=75):
     """Encode an image to JPEG and then to base64"""
     try:

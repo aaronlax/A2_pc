@@ -55,6 +55,12 @@ function App() {
       
       // If depth data is included in the frame
       if (data.depth_data) {
+        console.log('App received depth data in frame:', {
+          frameId: data.frame_id,
+          hasDepthData: !!data.depth_data,
+          dataLength: data.depth_data.length
+        });
+        
         setDepthData({
           depth_data: data.depth_data,
           width: data.width,
@@ -81,7 +87,23 @@ function App() {
       }
     });
     
-    // Connect to server
+    // Add dedicated depth data listener
+    const unsubscribeDepth = WebSocketService.on('depth_data', (data) => {
+      console.log('Received dedicated depth_data event:', {
+        frameId: data.frame_id,
+        hasDepthData: !!data.depth_data,
+        dataLength: data.depth_data ? data.depth_data.length : 0
+      });
+      
+      setDepthData({
+        depth_data: data.depth_data,
+        width: data.width || 640,
+        height: data.height || 480,
+        depth_scale: data.depth_scale || 0.001
+      });
+    });
+    
+    // Connect to server - only once on component mount
     WebSocketService.connectToServer();
     
     // Cleanup
@@ -91,9 +113,10 @@ function App() {
       unsubscribeFrame();
       unsubscribeDetection();
       unsubscribeStatus();
+      unsubscribeDepth();
       WebSocketService.disconnect();
     };
-  }, [connected]);
+  }, []); // Empty dependency array - only run once on mount
   
   // Handle camera control commands
   const handleCameraCommand = (command) => {
