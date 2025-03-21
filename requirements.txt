@@ -1,0 +1,7 @@
+websockets
+asyncio
+numpy
+opencv-python
+torch
+torchvision
+ultralytics

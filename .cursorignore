@@ -1,0 +1,40 @@
+# Cursor.sh specific ignore file
+# Ignore large directories that shouldn't be indexed
+
+# Python virtual environments
+venv/
+env/
+__pycache__/
+
+# Node modules (large directories)
+**/node_modules/
+
+# Build directories
+**/build/
+**/dist/
+
+# Media files and large binary files
+*.mp4
+*.avi
+*.mov
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.webp
+*.wav
+*.mp3
+
+# ML model files (typically large)
+**/models/
+**/a2_pc/wsl_processor/models/
+**/a2_pc/wsl_processor/data/
+
+# Generated files
+**/build/
+**/dist/
+**/.cache/
+
+# Log files
+**/logs/
+**/*.log 
